@@ -1,42 +1,42 @@
-# -*- coding: utf-8 -*-
+
 from flask import Flask, request, jsonify, render_template, url_for, redirect, flash, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
 import os
 from google.api_core.exceptions import ResourceExhausted
-import requests  # For catching network errors
+import requests 
 from requests.exceptions import ConnectionError, Timeout
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # Keep a secret key for flash messages (if used)
+app.config['SECRET_KEY'] = 'your_secret_key_here'  
 
-API_KEY = "AIzaSyBT3-47vpojSDpIaHRv6GHbm1yL85GSKnY" # Replace with your actual API key
+API_KEY = "AIzaSyBT3-47vpojSDpIaHRv6GHbm1yL85GSKnY"
 genai.configure(api_key=API_KEY)
 
 KNOWLEDGE_BASE_PATH = "knowledge_base"
-UPLOAD_FOLDER = 'uploads' # Folder to store uploaded images
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} # Allowed image file extensions
+UPLOAD_FOLDER = 'uploads' 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} 
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True) # Ensure upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True) 
 
 
 def load_knowledge(language):
     lang_knowledge_path = os.path.join(KNOWLEDGE_BASE_PATH, language)
-    documents = {} # Dictionary to store documents by service
+    documents = {} 
     if not os.path.exists(lang_knowledge_path):
         print(f"Warning: Knowledge base not found for language: {language} at {lang_knowledge_path}")
         return documents
 
     for filename in os.listdir(lang_knowledge_path):
         if filename.endswith(".txt"):
-            service_name = filename[:-4] # Remove ".txt" extension to get service name
+            service_name = filename[:-4]
             filepath = os.path.join(lang_knowledge_path, filename)
             with open(filepath, "r", encoding="utf-8") as f:
                 text = f.read()
-                documents[service_name] = text # Store text with service name as key
+                documents[service_name] = text
     print(f"Loaded knowledge for language: {language} - Services: {list(documents.keys())}")
     return documents
 
@@ -46,11 +46,10 @@ knowledge_hin = load_knowledge("hin")
 knowledge_mal = load_knowledge("mal")
 knowledge_tel = load_knowledge("tel")
 
-knowledge = {"en": knowledge_en, "ta": knowledge_ta,"hin":knowledge_hin,"mal":knowledge_mal,"tel":knowledge_tel} # Structure knowledge by language then service
+knowledge = {"en": knowledge_en, "ta": knowledge_ta,"hin":knowledge_hin,"mal":knowledge_mal,"tel":knowledge_tel}
 
 
-# --- Chatbot Initialization and Prompts ---
-def create_chatbot(language, service_context=None): # Added service_context
+def create_chatbot(language, service_context=None): 
     if language == "en":
         if service_context == "communication":
             prompt_text = """
@@ -146,7 +145,7 @@ def create_chatbot(language, service_context=None): # Added service_context
             You are ready to assist students with paper presentation and workshops. Let's go!
             """
         
-        else: # General bot if no service context
+        else: 
             prompt_text = """
             name = EduBot
             creator name = Your Organization
@@ -250,7 +249,7 @@ def create_chatbot(language, service_context=None): # Added service_context
             - ஊடாடும் மற்றும் பொருத்தமான இடங்களில் ஈமோஜிகளைப் பயன்படுத்தவும்.
             கட்டுரை வழங்கல் மற்றும் பயிலரங்குகளில் மாணவர்களுக்கு உதவ நீங்கள் தயாராக உள்ளீர்கள். தொடங்கலாம்!
             """
-        else: # General bot if no service context
+        else: 
             prompt_text = """
             name = கல்வி_உதவியாளர் (Kalvi Udhaviyalar - Educational Assistant)
             creator name = TEAM LEARNMATE (Ungal Nirvanam - Your Organization)
@@ -470,7 +469,7 @@ def create_chatbot(language, service_context=None): # Added service_context
             നിങ്ങൾ വിദ്യാർത്ഥികളെ പേപ്പർ അവതരണം, വർക്ക്‌ഷോപ്പുകളിൽ സഹായിക്കാൻ തയ്യാറാണ്. തുടങ്ങാം!
             """
 
-        else:  # General bot if no service context
+        else: 
             prompt_text = """
             name = EduBot
             സ്രഷ്ടാവിൻ്റെ പേര് = നിങ്ങളുടെ സംഘടന
@@ -603,17 +602,15 @@ def create_chatbot(language, service_context=None): # Added service_context
 
     try:
         bot = genai.GenerativeModel("gemini-2.0-flash").start_chat()
-        bot.send_message(prompt_text) # Initial prompt setup
+        bot.send_message(prompt_text)
         return bot
     except ResourceExhausted as e:
         print(f"ResourceExhausted Error: {e}")
         return None
-    except Exception as e: # Catch any other initialization errors
+    except Exception as e:
         print(f"Error during chatbot creation: {e}")
         return None
 
-
-# Chatbots will be created on demand in the chat route, initializing to None
 chatbots = {
     "en": {
         "general": None,
